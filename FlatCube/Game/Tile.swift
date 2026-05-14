@@ -8,33 +8,33 @@
 import SwiftUI
 
 enum TileColor: Int, CaseIterable, Codable {
-    case tangerine, orange, yellow, lime, green, cyan, twilight, purple, peach
+    case red, blue, green, yellow, purple, orange, cyan, pink, darkGray
 
     var color: Color {
         switch self {
-        case .tangerine: Color(#colorLiteral(red: 0.855, green: 0.224, blue: 0.169, alpha: 1)) // #da392b
-        case .orange:    Color(#colorLiteral(red: 0.859, green: 0.224, blue: 0.529, alpha: 1)) // #db3987
-        case .yellow:    Color(#colorLiteral(red: 0.894, green: 0.722, blue: 0.000, alpha: 1)) // #e4b800
-        case .lime:      Color(#colorLiteral(red: 0.620, green: 0.745, blue: 0.114, alpha: 1)) // #9ebe1d
-        case .green:     Color(#colorLiteral(red: 0.141, green: 0.635, blue: 0.247, alpha: 1)) // #24a23f
-        case .cyan:      Color(#colorLiteral(red: 0.000, green: 0.651, blue: 0.765, alpha: 1)) // #00a6c3
-        case .twilight:  Color(#colorLiteral(red: 0.149, green: 0.365, blue: 0.808, alpha: 1)) // #265dce
-        case .purple:    Color(#colorLiteral(red: 0.545, green: 0.271, blue: 0.808, alpha: 1)) // #8b45ce
-        case .peach:     Color(#colorLiteral(red: 0.808, green: 0.447, blue: 0.639, alpha: 1)) // #ce72a3
+        case .red: Color(#colorLiteral(red: 0.855, green: 0.114, blue: 0.114, alpha: 1)) // #da1d1d
+        case .blue: Color(#colorLiteral(red: 0.118, green: 0.298, blue: 0.855, alpha: 1)) // #1e4cda
+        case .green: Color(#colorLiteral(red: 0.184, green: 0.655, blue: 0.208, alpha: 1)) // #2fa735
+        case .yellow: Color(#colorLiteral(red: 0.988, green: 0.827, blue: 0.0, alpha: 1)) // #fcd300
+        case .purple: Color(#colorLiteral(red: 0.553, green: 0.114, blue: 0.855, alpha: 1)) // #8d1dda
+        case .orange: Color(#colorLiteral(red: 0.957, green: 0.502, blue: 0.059, alpha: 1)) // #f4800f
+        case .cyan: Color(#colorLiteral(red: 0.0, green: 0.784, blue: 0.855, alpha: 1)) // #00c8da
+        case .pink: Color(#colorLiteral(red: 0.925, green: 0.251, blue: 0.588, alpha: 1)) // #ec4096
+        case .darkGray: Color(#colorLiteral(red: 0.251, green: 0.271, blue: 0.314, alpha: 1)) // #404550
         }
     }
 
     var accessibilityName: String {
         switch self {
-        case .tangerine: return "tangerine"
-        case .orange: return "orange"
-        case .yellow: return "yellow"
-        case .lime: return "lime"
-        case .green: return "green"
-        case .cyan: return "cyan"
-        case .twilight: return "twilight"
-        case .purple: return "purple"
-        case .peach: return "peach"
+        case .red: return "tangerine"
+        case .blue: return "orange"
+        case .green: return "yellow"
+        case .yellow: return "lime"
+        case .purple: return "green"
+        case .orange: return "cyan"
+        case .cyan: return "twilight"
+        case .pink: return "purple"
+        case .darkGray: return "peach"
         }
     }
 }

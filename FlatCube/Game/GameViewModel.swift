@@ -33,22 +33,26 @@ final class GameViewModel: ObservableObject {
         board.tileAt(row: row, col: col)
     }
 
+    func rowTiles(_ row: Int) -> [Tile] {
+        (0..<9).map { board.tileAt(row: row, col: $0) }
+    }
+
+    func columnTiles(_ col: Int) -> [Tile] {
+        (0..<9).map { board.tileAt(row: $0, col: col) }
+    }
+
     func shiftRow(_ row: Int, by amount: Int) {
         guard amount != 0 else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            board.shiftRow(row, by: amount)
-            moves += abs(amount)
-            updateSolvedState()
-        }
+        board.shiftRow(row, by: amount)
+        moves += abs(amount)
+        updateSolvedState()
     }
 
     func shiftColumn(_ col: Int, by amount: Int) {
         guard amount != 0 else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            board.shiftColumn(col, by: amount)
-            moves += abs(amount)
-            updateSolvedState()
-        }
+        board.shiftColumn(col, by: amount)
+        moves += abs(amount)
+        updateSolvedState()
     }
 
     private func updateSolvedState() {
