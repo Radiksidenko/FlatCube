@@ -14,7 +14,9 @@ struct GameView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var overlayTiles: [Tile] = []
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 9)
+    private let cellSpacing: CGFloat = 2
+    private let blockSpacing: CGFloat = 10
+    private let boardPadding: CGFloat = 8
 
     var body: some View {
         NavigationStack {
@@ -23,25 +25,21 @@ struct GameView: View {
 
                 GeometryReader { geometry in
                     let side = min(geometry.size.width, geometry.size.height)
-                    let spacing: CGFloat = 2
-                    let padding: CGFloat = 8
-                    let tileSize = (side - padding * 2 - spacing * 8) / 9
-                    let step = tileSize + spacing
-                    let boardOrigin = CGPoint(x: padding, y: padding)
+                    let totalSpacing = cellSpacing * 6 + blockSpacing * 2
+                    let tileSize = max(0, (side - boardPadding * 2 - totalSpacing) / 9)
+                    let logicalStep = tileSize + cellSpacing
+                    let boardSize = tileSize * 9 + totalSpacing
+                    let boardOrigin = CGPoint(x: boardPadding, y: boardPadding)
 
                     ZStack(alignment: .topLeading) {
-                        boardGrid(tileSize: tileSize, spacing: spacing, step: step)
-                            .padding(padding)
-//                        
-//                        BlockSeparators(step: step, tileSize: tileSize)
-//                            .padding(padding)
-//                            .allowsHitTesting(false)
-                        
+                        boardGrid(tileSize: tileSize, logicalStep: logicalStep)
+                            .padding(boardPadding)
+
                         overlayLayer(
                             tileSize: tileSize,
-                            spacing: spacing,
-                            step: step,
-                            boardOrigin: boardOrigin
+                            logicalStep: logicalStep,
+                            boardOrigin: boardOrigin,
+                            boardSize: boardSize
                         )
                     }
                     .frame(width: side, height: side)
@@ -57,81 +55,9 @@ struct GameView: View {
                         .font(.headline)
                         .foregroundStyle(.green)
                 }
-
-                Text("Simplified release logic without fade handoff.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
             }
             .padding()
             .navigationTitle("Flat Cube")
-        }
-    }
-
-    private func boardGrid(tileSize: CGFloat, spacing: CGFloat, step: CGFloat) -> some View {
-        LazyVGrid(columns: columns, spacing: spacing) {
-            ForEach(0..<9, id: \.self) { row in
-                ForEach(0..<9, id: \.self) { col in
-                    let hidden = isTileHidden(row: row, col: col)
-
-                    TileView(
-                        tile: viewModel.tile(row: row, col: col),
-                        row: row,
-                        col: col,
-                        size: tileSize
-                    )
-                    .opacity(hidden ? 0 : 1)
-                    .contentShape(Rectangle())
-                    .gesture(dragGesture(row: row, col: col, step: step))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func overlayLayer(
-        tileSize: CGFloat,
-        spacing: CGFloat,
-        step: CGFloat,
-        boardOrigin: CGPoint
-    ) -> some View {
-        if let line = activeLine, !overlayTiles.isEmpty {
-            switch line {
-            case .row(let row):
-                let y = boardOrigin.y + CGFloat(row) * step
-                SeamlessRowOverlay(
-                    tiles: overlayTiles,
-                    tileSize: tileSize,
-                    spacing: spacing,
-                    visibleLength: step * 9 - spacing,
-                    offsetX: dragOffset.width
-                )
-                .frame(width: step * 9 - spacing, height: tileSize)
-                .position(
-                    x: boardOrigin.x + (step * 9 - spacing) / 2,
-                    y: y + tileSize / 2
-                )
-                .zIndex(2)
-
-            case .column(let col):
-                let x = boardOrigin.x + CGFloat(col) * step
-                SeamlessColumnOverlay(
-                    tiles: overlayTiles,
-                    tileSize: tileSize,
-                    spacing: spacing,
-                    visibleLength: step * 9 - spacing,
-                    offsetY: dragOffset.height
-                )
-                .frame(width: tileSize, height: step * 9 - spacing)
-                .position(
-                    x: x + tileSize / 2,
-                    y: boardOrigin.y + (step * 9 - spacing) / 2
-                )
-                .zIndex(2)
-            }
-        } else {
-            EmptyView()
         }
     }
 
@@ -148,13 +74,13 @@ struct GameView: View {
             Spacer()
 
             Button("New Game") {
-                cancelOverlayState()
+                clearOverlayState()
                 viewModel.newGame()
             }
             .buttonStyle(.borderedProminent)
 
             Button("Reset") {
-                cancelOverlayState()
+                clearOverlayState()
                 viewModel.reset()
             }
             .buttonStyle(.bordered)
@@ -165,26 +91,84 @@ struct GameView: View {
         VStack(spacing: 8) {
             Text("Controls")
                 .font(.headline)
-
-            Text("Drag farther to move more cells.")
+            Text("Drag rows or columns.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private func isTileHidden(row: Int, col: Int) -> Bool {
-        guard let line = activeLine else { return false }
+    private func boardGrid(tileSize: CGFloat, logicalStep: CGFloat) -> some View {
+        VStack(spacing: cellSpacing) {
+            ForEach(0..<9, id: \.self) { row in
+                HStack(spacing: cellSpacing) {
+                    ForEach(0..<9, id: \.self) { col in
+                        TileView(
+                            tile: viewModel.tile(row: row, col: col),
+                            row: row,
+                            col: col,
+                            size: tileSize
+                        )
+                        .opacity(isTileHidden(row: row, col: col) ? 0 : 1)
+                        .contentShape(Rectangle())
+                        .gesture(dragGesture(row: row, col: col, logicalStep: logicalStep))
 
-        switch line {
-        case .row(let activeRow):
-            return row == activeRow
-        case .column(let activeCol):
-            return col == activeCol
+                        if col == 2 || col == 5 {
+                            Color.clear.frame(width: blockSpacing)
+                        }
+                    }
+                }
+
+                if row == 2 || row == 5 {
+                    Color.clear.frame(height: blockSpacing)
+                }
+            }
         }
     }
 
-    private func dragGesture(row: Int, col: Int, step: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 6)
+    @ViewBuilder
+    private func overlayLayer(
+        tileSize: CGFloat,
+        logicalStep: CGFloat,
+        boardOrigin: CGPoint,
+        boardSize: CGFloat
+    ) -> some View {
+        guard let line = activeLine, !overlayTiles.isEmpty else { return EmptyView() }
+
+        switch line {
+        case .row(let row):
+            return MovingLineOverlay(
+                tiles: overlayTiles,
+                axis: .horizontal,
+                fixedIndex: row,
+                tileSize: tileSize,
+                boardSize: boardSize,
+                origin: boardOrigin,
+                translation: dragOffset.width,
+                logicalStep: logicalStep,
+                cellSpacing: cellSpacing,
+                blockSpacing: blockSpacing
+            )
+            .zIndex(2)
+
+        case .column(let col):
+            return MovingLineOverlay(
+                tiles: overlayTiles,
+                axis: .vertical,
+                fixedIndex: col,
+                tileSize: tileSize,
+                boardSize: boardSize,
+                origin: boardOrigin,
+                translation: dragOffset.height,
+                logicalStep: logicalStep,
+                cellSpacing: cellSpacing,
+                blockSpacing: blockSpacing
+            )
+            .zIndex(2)
+        }
+    }
+
+    private func dragGesture(row: Int, col: Int, logicalStep: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .global)
             .onChanged { value in
                 let dx = value.translation.width
                 let dy = value.translation.height
@@ -198,23 +182,25 @@ struct GameView: View {
 
                 switch activeLine {
                 case .row(let activeRow) where activeRow == row:
-                    dragOffset = CGSize(width: value.translation.width, height: 0)
+                    dragOffset = CGSize(width: dx, height: 0)
 
                 case .column(let activeCol) where activeCol == col:
-                    dragOffset = CGSize(width: 0, height: value.translation.height)
+                    dragOffset = CGSize(width: 0, height: dy)
 
                 default:
                     break
                 }
             }
             .onEnded { value in
-                finishDrag(translation: value.translation,
-                           predicted: value.predictedEndTranslation,
-                           step: step)
+                finishDrag(
+                    translation: value.translation,
+                    predicted: value.predictedEndTranslation,
+                    logicalStep: logicalStep
+                )
             }
     }
 
-    private func finishDrag(translation: CGSize, predicted: CGSize, step: CGFloat) {
+    private func finishDrag(translation: CGSize, predicted: CGSize, logicalStep: CGFloat) {
         guard let activeLine else { return }
 
         let raw: CGFloat
@@ -230,7 +216,7 @@ struct GameView: View {
         }
 
         let blended = raw * 0.75 + predictedRaw * 0.25
-        var steps = Int((blended / step).rounded())
+        let steps = snappedStepCount(for: blended, logicalStep: logicalStep)
 
         if steps == 0 {
             withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.88)) {
@@ -243,8 +229,7 @@ struct GameView: View {
             return
         }
 
-        steps = normalizedSteps(steps)
-        let snapped = CGFloat(steps) * step
+        let snapped = snappedOffset(for: steps, logicalStep: logicalStep)
 
         withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.84)) {
             switch activeLine {
@@ -261,14 +246,23 @@ struct GameView: View {
         }
     }
 
-    private func clearOverlayState() {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
+    private func snappedStepCount(for translation: CGFloat, logicalStep: CGFloat) -> Int {
+        let steps = Int((translation / logicalStep).rounded())
+        return max(-4, min(4, steps))
+    }
 
-        withTransaction(transaction) {
-            activeLine = nil
-            dragOffset = .zero
-            overlayTiles = []
+    private func snappedOffset(for steps: Int, logicalStep: CGFloat) -> CGFloat {
+        CGFloat(steps) * logicalStep
+    }
+
+    private func isTileHidden(row: Int, col: Int) -> Bool {
+        guard let line = activeLine else { return false }
+
+        switch line {
+        case .row(let activeRow):
+            return row == activeRow
+        case .column(let activeCol):
+            return col == activeCol
         }
     }
 
@@ -283,13 +277,6 @@ struct GameView: View {
         }
     }
 
-    private func normalizedSteps(_ steps: Int) -> Int {
-        var value = steps % 9
-        if value > 4 { value -= 9 }
-        if value < -4 { value += 9 }
-        return value
-    }
-
     private func apply(steps: Int) {
         guard let line = activeLine else { return }
 
@@ -301,8 +288,15 @@ struct GameView: View {
         }
     }
 
-    private func cancelOverlayState() {
-        clearOverlayState()
+    private func clearOverlayState() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+
+        withTransaction(transaction) {
+            activeLine = nil
+            dragOffset = .zero
+            overlayTiles = []
+        }
     }
 }
 
@@ -311,69 +305,74 @@ enum ActiveLine: Equatable {
     case column(Int)
 }
 
-struct SeamlessRowOverlay: View {
-    let tiles: [Tile]
-    let tileSize: CGFloat
-    let spacing: CGFloat
-    let visibleLength: CGFloat
-    let offsetX: CGFloat
-
-    private var segmentLength: CGFloat {
-        CGFloat(tiles.count) * (tileSize + spacing) - spacing
-    }
-
-    private var repeatedTiles: [Tile] {
-        tiles + tiles + tiles
-    }
-
-    var body: some View {
-        HStack(spacing: spacing) {
-            ForEach(Array(repeatedTiles.enumerated()), id: \.offset) { _, tile in
-                TileOverlayCell(tile: tile, size: tileSize)
-            }
-        }
-        .offset(x: wrappedOffset(base: offsetX) - segmentLength)
-        .frame(width: visibleLength, height: tileSize, alignment: .leading)
-        .clipped()
-    }
-
-    private func wrappedOffset(base: CGFloat) -> CGFloat {
-        var x = base.truncatingRemainder(dividingBy: segmentLength)
-        if x < 0 { x += segmentLength }
-        return x
-    }
+enum OverlayAxis {
+    case horizontal
+    case vertical
 }
 
-struct SeamlessColumnOverlay: View {
+struct MovingLineOverlay: View {
     let tiles: [Tile]
+    let axis: OverlayAxis
+    let fixedIndex: Int
     let tileSize: CGFloat
-    let spacing: CGFloat
-    let visibleLength: CGFloat
-    let offsetY: CGFloat
+    let boardSize: CGFloat
+    let origin: CGPoint
+    let translation: CGFloat
+    let logicalStep: CGFloat
+    let cellSpacing: CGFloat
+    let blockSpacing: CGFloat
 
-    private var segmentLength: CGFloat {
-        CGFloat(tiles.count) * (tileSize + spacing) - spacing
-    }
-
-    private var repeatedTiles: [Tile] {
-        tiles + tiles + tiles
+    private var lineLength: CGFloat {
+        tileSize * 9 + cellSpacing * 6 + blockSpacing * 2
     }
 
     var body: some View {
-        VStack(spacing: spacing) {
-            ForEach(Array(repeatedTiles.enumerated()), id: \.offset) { _, tile in
-                TileOverlayCell(tile: tile, size: tileSize)
-            }
+        ZStack(alignment: .topLeading) {
+            tileCopies(shift: -lineLength)
+            tileCopies(shift: 0)
+            tileCopies(shift: lineLength)
         }
-        .offset(y: wrappedOffset(base: offsetY) - segmentLength)
-        .frame(width: tileSize, height: visibleLength, alignment: .top)
+        .frame(width: boardSize + origin.x * 2, height: boardSize + origin.y * 2, alignment: .topLeading)
         .clipped()
     }
 
-    private func wrappedOffset(base: CGFloat) -> CGFloat {
-        var y = base.truncatingRemainder(dividingBy: segmentLength)
-        if y < 0 { y += segmentLength }
-        return y
+    @ViewBuilder
+    private func tileCopies(shift: CGFloat) -> some View {
+        ForEach(0..<9, id: \.self) { index in
+            TileOverlayCell(tile: tiles[index], size: tileSize)
+                .position(position(for: index, shift: shift))
+        }
+    }
+
+    private func position(for movingIndex: Int, shift: CGFloat) -> CGPoint {
+        let movingLeading = leadingOffset(for: movingIndex)
+        let fixedLeading = leadingOffset(for: fixedIndex)
+        let edgeOffset: CGFloat = shift == 0 ? 0 : (shift > 0 ? origin.x : -origin.x)
+
+        let fixedAxisCorrection = CGFloat(fixedIndex / 3) * 4
+
+        switch axis {
+        case .horizontal:
+            return CGPoint(
+                x: origin.x + movingLeading + translation + shift + edgeOffset + tileSize / 2,
+                y: origin.y + fixedLeading + fixedAxisCorrection + tileSize / 2
+            )
+
+        case .vertical:
+            return CGPoint(
+                x: origin.x + fixedLeading + fixedAxisCorrection + tileSize / 2,
+                y: origin.y + movingLeading + translation + shift + edgeOffset + tileSize / 2
+            )
+        }
+    }
+
+    private func leadingOffset(for index: Int) -> CGFloat {
+        let blockJumps = index / 3
+        let normalGaps = index - blockJumps
+
+        return CGFloat(index) * tileSize
+            + CGFloat(normalGaps) * cellSpacing
+            + CGFloat(blockJumps) * blockSpacing
     }
 }
 
@@ -411,36 +410,5 @@ struct TileView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(tile.color.accessibilityName), row \(row + 1), column \(col + 1)")
             .accessibilityHint("Drag horizontally to move row or vertically to move column")
-    }
-}
-
-struct BlockSeparators: View {
-    let step: CGFloat
-    let tileSize: CGFloat
-
-    var body: some View {
-        GeometryReader { geo in
-            Path { path in
-                let boardSize = step * 9 - (step - tileSize)
-
-                let x1 = step * 3 - (step - tileSize) / 2
-                let x2 = step * 6 - (step - tileSize) / 2
-                let y1 = step * 3 - (step - tileSize) / 2
-                let y2 = step * 6 - (step - tileSize) / 2
-
-                path.move(to: CGPoint(x: x1, y: 0))
-                path.addLine(to: CGPoint(x: x1, y: boardSize))
-
-                path.move(to: CGPoint(x: x2, y: 0))
-                path.addLine(to: CGPoint(x: x2, y: boardSize))
-
-                path.move(to: CGPoint(x: 0, y: y1))
-                path.addLine(to: CGPoint(x: boardSize, y: y1))
-
-                path.move(to: CGPoint(x: 0, y: y2))
-                path.addLine(to: CGPoint(x: boardSize, y: y2))
-            }
-            .stroke(.white.opacity(0.85), lineWidth: 3)
-        }
     }
 }
