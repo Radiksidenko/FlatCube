@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct GameView: View {
     @StateObject private var viewModel = GameViewModel()
@@ -14,6 +15,13 @@ struct GameView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var overlayTiles: [Tile] = []
     @State private var showBlockGuide = true
+    
+    @State private var hapticsEnabled = true
+    @State private var lastHapticStep: Int?
+    
+    private let dragStartHaptic = UIImpactFeedbackGenerator(style: .light)
+    private let dragEndHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let stepHaptic = UISelectionFeedbackGenerator()
     
     private let cellSpacing: CGFloat = 2
     private let blockSpacing: CGFloat = 10
@@ -101,6 +109,10 @@ struct GameView: View {
             }
             
             Toggle("Show BlockGuide", isOn: $showBlockGuide)
+                .toggleStyle(.switch)
+                .font(.footnote)
+            
+            Toggle("Haptics", isOn: $hapticsEnabled)
                 .toggleStyle(.switch)
                 .font(.footnote)
         }
@@ -191,9 +203,19 @@ struct GameView: View {
                 let dx = value.translation.width
                 let dy = value.translation.height
 
+                let currentStep: Int
+                if abs(dx) > abs(dy) {
+                    currentStep = Int((dx / logicalStep).rounded())
+                } else {
+                    currentStep = Int((dy / logicalStep).rounded())
+                }
+                
                 if activeLine == nil {
                     activeLine = abs(dx) > abs(dy) ? .row(row) : .column(col)
                     overlayTiles = snapshotTiles(for: activeLine)
+                    dragStartHaptic.prepare()
+                    dragStartHaptic.impactOccurred()
+                    lastHapticStep = 0
                 }
 
                 guard let activeLine else { return }
@@ -207,6 +229,12 @@ struct GameView: View {
 
                 default:
                     break
+                }
+                
+                if hapticsEnabled, currentStep != lastHapticStep {
+                    stepHaptic.prepare()
+                    stepHaptic.selectionChanged()
+                    lastHapticStep = currentStep
                 }
             }
             .onEnded { value in
@@ -237,13 +265,17 @@ struct GameView: View {
         let steps = snappedStepCount(for: blended, logicalStep: logicalStep)
 
         if steps == 0 {
+            dragEndHaptic.prepare()
+            dragEndHaptic.impactOccurred()
+            
             withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.88)) {
                 dragOffset = .zero
             }
-
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 clearOverlayState()
             }
+            
             return
         }
 
@@ -259,6 +291,8 @@ struct GameView: View {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            dragEndHaptic.prepare()
+            dragEndHaptic.impactOccurred()
             apply(steps: steps)
             clearOverlayState()
         }
@@ -266,7 +300,7 @@ struct GameView: View {
 
     private func snappedStepCount(for translation: CGFloat, logicalStep: CGFloat) -> Int {
         let steps = Int((translation / logicalStep).rounded())
-        return max(-4, min(4, steps))
+        return max(-8, min(8, steps))
     }
 
     private func snappedOffset(for steps: Int, logicalStep: CGFloat) -> CGFloat {
@@ -310,6 +344,8 @@ struct GameView: View {
         var transaction = Transaction()
         transaction.disablesAnimations = true
 
+        lastHapticStep = nil
+        
         withTransaction(transaction) {
             activeLine = nil
             dragOffset = .zero
