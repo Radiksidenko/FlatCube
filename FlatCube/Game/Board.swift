@@ -76,7 +76,7 @@ struct Board: Equatable {
         var result: [Tile] = []
 
         for blockRow in 0..<3 {
-            for innerRow in 0..<3 {
+            for _ in 0..<3 {
                 for blockCol in 0..<3 {
                     let colorIndex = blockRow * 3 + blockCol
                     let color = TileColor.allCases[colorIndex]

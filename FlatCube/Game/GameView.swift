@@ -13,11 +13,14 @@ struct GameView: View {
     @State private var activeLine: ActiveLine?
     @State private var dragOffset: CGSize = .zero
     @State private var overlayTiles: [Tile] = []
-
+    @State private var showBlockGuide = true
+    
     private let cellSpacing: CGFloat = 2
     private let blockSpacing: CGFloat = 10
     private let boardPadding: CGFloat = 8
-
+    
+    private let blockGuideColors: [Color] = TileColor.allCases.map { $0.color }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -45,16 +48,26 @@ struct GameView: View {
                     .frame(width: side, height: side)
                     .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay {
+                        if showBlockGuide {
+                            BlockGuideMarkers(
+                                boardSize: boardSize,
+                                boardPadding: boardPadding,
+                                blockSpacing: blockSpacing,
+                                colors: blockGuideColors
+                            )
+                        }
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
 
                 controls
 
-                if viewModel.isSolved {
-                    Text("Solved!")
-                        .font(.headline)
-                        .foregroundStyle(.green)
-                }
+                Text("Solved!")
+                    .font(.headline)
+                    .foregroundStyle(.green)
+                    .opacity(viewModel.isSolved ? 1 : 0)
+                    .frame(height: 24)
             }
             .padding()
             .navigationTitle("Flat Cube")
@@ -62,28 +75,34 @@ struct GameView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text("Moves")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("\(viewModel.moves)")
-                    .font(.title2.bold())
+        VStack {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Moves")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(viewModel.moves)")
+                        .font(.title2.bold())
+                }
+                
+                Spacer()
+                
+                Button("New Game") {
+                    clearOverlayState()
+                    viewModel.newGame()
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button("Reset") {
+                    clearOverlayState()
+                    viewModel.reset()
+                }
+                .buttonStyle(.bordered)
             }
-
-            Spacer()
-
-            Button("New Game") {
-                clearOverlayState()
-                viewModel.newGame()
-            }
-            .buttonStyle(.borderedProminent)
-
-            Button("Reset") {
-                clearOverlayState()
-                viewModel.reset()
-            }
-            .buttonStyle(.bordered)
+            
+            Toggle("Show BlockGuide", isOn: $showBlockGuide)
+                .toggleStyle(.switch)
+                .font(.footnote)
         }
     }
 
@@ -125,7 +144,6 @@ struct GameView: View {
         }
     }
 
-    @ViewBuilder
     private func overlayLayer(
         tileSize: CGFloat,
         logicalStep: CGFloat,
@@ -410,5 +428,60 @@ struct TileView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(tile.color.accessibilityName), row \(row + 1), column \(col + 1)")
             .accessibilityHint("Drag horizontally to move row or vertically to move column")
+    }
+}
+
+struct BlockGuideMarkers: View {
+    let boardSize: CGFloat
+    let boardPadding: CGFloat
+    let blockSpacing: CGFloat
+    let colors: [Color]
+    
+    private let markerGap: CGFloat = 16
+    private let markerThickness: CGFloat = 14
+    private let protrusion: CGFloat = 10
+    private let innerInset: CGFloat = 14
+    private let cornerRadius: CGFloat = 8
+
+    private var blockSize: CGFloat {
+        (boardSize - blockSpacing * 2) / 3
+    }
+
+    private var horizontalMarkerWidth: CGFloat {
+        max(0, blockSize - innerInset * 2)
+    }
+
+    private var verticalMarkerHeight: CGFloat {
+        max(0, blockSize - innerInset * 2)
+    }
+    
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(0..<3, id: \.self) { col in
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(colors[col])
+                    .frame(width: horizontalMarkerWidth, height: markerThickness)
+                    .offset(
+                        x: boardPadding + CGFloat(col) * (blockSize + blockSpacing) + innerInset,
+                        y: boardPadding - protrusion - markerGap
+                    )
+            }
+
+            ForEach(0..<3, id: \.self) { row in
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(colors[row * 3])
+                    .frame(width: markerThickness, height: verticalMarkerHeight)
+                    .offset(
+                        x: boardPadding - protrusion - markerGap,
+                        y: boardPadding + CGFloat(row) * (blockSize + blockSpacing) + innerInset
+                    )
+            }
+        }
+        .frame(
+            width: boardSize + boardPadding * 2,
+            height: boardSize + boardPadding * 2,
+            alignment: .topLeading
+        )
+        .allowsHitTesting(false)
     }
 }
