@@ -14,20 +14,47 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var moves = 0
     @Published private(set) var isSolved = true
     @Published private(set) var bestScore = 0
+    @Published private(set) var isShuffling = false
     
     init() {
         bestScore = storedBestScore
-        newGame()
+        reset()
     }
 
     func newGame() {
-        board = Board()
-        board.shuffle()
-        moves = 0
-        bestScore = storedBestScore
-        isSolved = board.isSolved()
+        Task {
+            await animateShuffle()
+        }
     }
 
+    @MainActor
+    private func animateShuffle() async {
+        isShuffling = true
+        board.reset()
+        moves = 0
+        isSolved = board.isSolved()
+        
+        for _ in 0..<20 {
+            let isRow = Bool.random()
+            let idx = Int.random(in: 0..<Board.size)
+            let amount = [1, -1].randomElement() ?? 1
+            
+            withAnimation(.interactiveSpring(response: 0.15, dampingFraction: 0.8)) {
+                if isRow {
+                    board.shiftRow(idx, by: amount)
+                } else {
+                    board.shiftColumn(idx, by: amount)
+                }
+            }
+            
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        
+        moves = 0
+        isSolved = board.isSolved()
+        isShuffling = false
+    }
+    
     func reset() {
         board.reset()
         moves = 0

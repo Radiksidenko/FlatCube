@@ -489,22 +489,42 @@ struct BlockGuideMarkers: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             ForEach(0..<3, id: \.self) { col in
+                let posX = boardPadding + CGFloat(col) * (blockSize + blockSpacing) + innerInset
+                
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(colors[col])
                     .frame(width: horizontalMarkerWidth, height: markerThickness)
                     .offset(
-                        x: boardPadding + CGFloat(col) * (blockSize + blockSpacing) + innerInset,
+                        x: posX,
                         y: boardPadding - protrusion - markerGap
+                    )
+                
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(colors[6 + col])
+                    .frame(width: horizontalMarkerWidth, height: markerThickness)
+                    .offset(
+                        x: posX,
+                        y: boardPadding + boardSize + protrusion + markerGap - markerThickness
                     )
             }
 
             ForEach(0..<3, id: \.self) { row in
+                let posY = boardPadding + CGFloat(row) * (blockSize + blockSpacing) + innerInset
+                
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(colors[row * 3])
                     .frame(width: markerThickness, height: verticalMarkerHeight)
                     .offset(
                         x: boardPadding - protrusion - markerGap,
-                        y: boardPadding + CGFloat(row) * (blockSize + blockSpacing) + innerInset
+                        y: posY
+                    )
+                
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(colors[row * 3 + 2])
+                    .frame(width: markerThickness, height: verticalMarkerHeight)
+                    .offset(
+                        x: boardPadding + boardSize + protrusion + markerGap - markerThickness,
+                        y: posY
                     )
             }
         }
