@@ -83,31 +83,26 @@ struct GameView: View {
     }
 
     private var header: some View {
-        VStack {
+        VStack(spacing: 12) {
             HStack {
-                VStack(alignment: .leading) {
-                    Text("Moves")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(viewModel.moves)")
-                        .font(.title2.bold())
-                }
-                
-                Spacer()
-                
+                StatCard(title: "Score", value: "\(viewModel.moves)")
+                StatCard(title: "Best", value: "\(viewModel.bestScore)")
+            }
+
+            HStack {
                 Button("New Game") {
                     clearOverlayState()
                     viewModel.newGame()
                 }
                 .buttonStyle(.borderedProminent)
-                
+
                 Button("Reset") {
                     clearOverlayState()
                     viewModel.reset()
                 }
                 .buttonStyle(.bordered)
             }
-            
+
             Toggle("Show BlockGuide", isOn: $showBlockGuide)
                 .toggleStyle(.switch)
                 .font(.footnote)
@@ -519,5 +514,24 @@ struct BlockGuideMarkers: View {
             alignment: .topLeading
         )
         .allowsHitTesting(false)
+    }
+}
+
+private struct StatCard: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title3.bold())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }

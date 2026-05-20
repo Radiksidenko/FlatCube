@@ -8,11 +8,15 @@
 import SwiftUI
 
 final class GameViewModel: ObservableObject {
+    @AppStorage("best_score") private var storedBestScore = 0
+    
     @Published private(set) var board = Board()
     @Published private(set) var moves = 0
     @Published private(set) var isSolved = true
-
+    @Published private(set) var bestScore = 0
+    
     init() {
+        bestScore = storedBestScore
         newGame()
     }
 
@@ -20,13 +24,15 @@ final class GameViewModel: ObservableObject {
         board = Board()
         board.shuffle()
         moves = 0
-        updateSolvedState()
+        bestScore = storedBestScore
+        isSolved = board.isSolved()
     }
 
     func reset() {
         board.reset()
         moves = 0
-        updateSolvedState()
+        bestScore = storedBestScore
+        isSolved = board.isSolved()
     }
 
     func tile(row: Int, col: Int) -> Tile {
@@ -42,6 +48,7 @@ final class GameViewModel: ObservableObject {
     }
 
     func shiftRow(_ row: Int, by amount: Int) {
+        guard !isSolved else { return }
         guard amount != 0 else { return }
         board.shiftRow(row, by: amount)
         moves += abs(amount)
@@ -49,7 +56,9 @@ final class GameViewModel: ObservableObject {
     }
 
     func shiftColumn(_ col: Int, by amount: Int) {
+        guard !isSolved else { return }
         guard amount != 0 else { return }
+        
         board.shiftColumn(col, by: amount)
         moves += abs(amount)
         updateSolvedState()
@@ -57,5 +66,17 @@ final class GameViewModel: ObservableObject {
 
     private func updateSolvedState() {
         isSolved = board.isSolved()
+        
+        if isSolved {
+            updateBestScoreIfNeeded()
+        }
+    }
+    
+    private func updateBestScoreIfNeeded() {
+        if storedBestScore == 0 || moves < storedBestScore {
+            storedBestScore = moves
+        }
+        
+        bestScore = storedBestScore
     }
 }
